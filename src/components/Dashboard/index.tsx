@@ -27,6 +27,7 @@ import { useNavigate } from 'react-router-dom';
 import { getClients, saveClients, searchClients } from '@/lib/localStorage';
 import { INVESTMENT_TRACKS, PROFESSIONS } from '@/lib/constants';
 import PerformanceChart from '@/components/PerformanceChart';
+import { supabase } from "@/integrations/supabase/client";
 
 const COLORS = ['#8B5CF6', '#0EA5E9', '#F97316', '#D946EF', '#10B981'];
 const RISK_PROFILES = ['Conservative', 'Moderate', 'Aggressive'];
@@ -82,49 +83,26 @@ export const Dashboard = () => {
     profit: true
   });
   const [investmentPercentage, setInvestmentPercentage] = useState(10);
+  const [isLoading, setIsLoading] = useState(true);
   const isMobile = useIsMobile();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const storedClients = getClients();
-    if (storedClients.length === 0) {
-      generateClients();
-    } else {
-      setClients(storedClients);
-    }
+    const loadClients = async () => {
+      setIsLoading(true);
+      const storedClients = await getClients();
+      if (storedClients.length === 0) {
+        await generateClients();
+      } else {
+        setClients(storedClients);
+      }
+      setIsLoading(false);
+    };
+
+    loadClients();
   }, []);
 
-  const generateMonthlyData = ({ investmentPercentageOverride, investmentTrack }: { investmentPercentageOverride?: number; investmentTrack?: string } = {}): MonthlyData[] => {
-    const data: MonthlyData[] = [];
-    let portfolioValue = 0;
-    let cumulativeProfit = 0;
-    let totalInvestment = 0;
-    
-    // Select returns based on investment track
-    const returns = investmentTrack === 'SPY500' ? SP500_RETURNS : NASDAQ_RETURNS;
-    
-    for (let month = 0; month < returns.length; month++) {
-      const monthlyExpense = Math.floor(Math.random() * 16000) + 4000;
-      const investmentPercentage = investmentPercentageOverride || (Math.random() * 17 + 3);
-      const investment = monthlyExpense * (investmentPercentage / 100);
-      
-      totalInvestment += investment;
-      const monthlyReturn = returns[month];
-      portfolioValue = (portfolioValue + investment) * (1 + monthlyReturn);
-      cumulativeProfit = portfolioValue - totalInvestment;
-      
-      data.push({
-        month: month + 1,
-        expenses: monthlyExpense,
-        investment,
-        portfolioValue,
-        profit: cumulativeProfit
-      });
-    }
-    return data;
-  };
-
-  const generateClients = () => {
+  const generateClients = async () => {
     const newClients: Client[] = Array.from({ length: 100 }, (_, i) => {
       const monthlyExpenses = Math.floor(Math.random() * 16000) + 4000;
       const investmentPercentage = (Math.random() * 17 + 3).toFixed(1);
@@ -145,8 +123,8 @@ export const Dashboard = () => {
       };
     });
 
+    await saveClients(newClients);
     setClients(newClients);
-    saveClients(newClients);
   };
 
   const calculateMetrics = (client: Client): ClientMetrics => {
@@ -225,451 +203,457 @@ export const Dashboard = () => {
     return series.filter(s => s.visible);
   };
 
-  const handleInvestmentPercentageChange = (value: number[]) => {
+  const handleInvestmentPercentageChange = async (value: number[]) => {
     setInvestmentPercentage(value[0]);
     const updatedClients = clients.map(client => ({
       ...client,
       investmentPercentage: value[0].toString(),
-      monthlyData: generateMonthlyData({ investmentPercentageOverride: value[0], investmentTrack: client.investmentTrack })
+      monthlyData: generateMonthlyData({ 
+        investmentPercentageOverride: value[0], 
+        investmentTrack: client.investmentTrack 
+      })
     }));
+    await saveClients(updatedClients);
     setClients(updatedClients);
-    saveClients(updatedClients);
   };
 
-  // Modify the client card click handler
   const handleClientClick = (client: Client) => {
     setSelectedClient(client);
-    // Instead of opening modal, scroll to top and update main dashboard
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
     <div className="min-h-screen bg-background text-foreground p-2 md:p-8">
-      <div className="flex flex-col md:flex-row justify-between items-start mb-6 md:mb-8">
-        <div className="w-full md:w-auto flex flex-col sm:flex-row gap-4 mb-4 md:mb-0">
-          <div className="w-full sm:w-auto">
-            <Button 
-              size="lg"
-              className="w-full h-auto bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-semibold px-4 md:px-6 py-3 md:py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-              onClick={() => navigate('/add-client')}
-            >
-              <div className="flex flex-col items-center gap-2">
-                <span className="text-xs md:text-base font-bold tracking-tight">
-                  Add New Client
-                </span>
-                <span className="text-xs md:text-sm font-normal text-white/90">
-                  Start managing a new portfolio
-                </span>
+      {isLoading ? (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-col md:flex-row justify-between items-start mb-6 md:mb-8">
+            <div className="w-full md:w-auto flex flex-col sm:flex-row gap-4 mb-4 md:mb-0">
+              <div className="w-full sm:w-auto">
+                <Button 
+                  size="lg"
+                  className="w-full h-auto bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-semibold px-4 md:px-6 py-3 md:py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  onClick={() => navigate('/add-client')}
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-xs md:text-base font-bold tracking-tight">
+                      Add New Client
+                    </span>
+                    <span className="text-xs md:text-sm font-normal text-white/90">
+                      Start managing a new portfolio
+                    </span>
+                  </div>
+                </Button>
               </div>
-            </Button>
-          </div>
-          
-          <div className="w-full sm:w-auto">
-            <Button 
-              size="lg"
-              className="w-full h-auto bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold px-4 md:px-6 py-3 md:py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-              onClick={() => navigate('/simulator')}
-            >
-              <div className="flex flex-col items-center gap-2">
-                <span className="text-xs md:text-base font-bold tracking-tight">
-                  Investment Simulator
-                </span>
-                <span className="text-xs md:text-sm font-normal text-white/90">
-                  See how your money could grow
-                </span>
+              
+              <div className="w-full sm:w-auto">
+                <Button 
+                  size="lg"
+                  className="w-full h-auto bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold px-4 md:px-6 py-3 md:py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  onClick={() => navigate('/simulator')}
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-xs md:text-base font-bold tracking-tight">
+                      Investment Simulator
+                    </span>
+                    <span className="text-xs md:text-sm font-normal text-white/90">
+                      See how your money could grow
+                    </span>
+                  </div>
+                </Button>
               </div>
-            </Button>
+            </div>
+            <ThemeToggle />
           </div>
-        </div>
-        <ThemeToggle />
-      </div>
 
-      {/* Add performance chart after the metrics cards */}
-      <div className="mb-6 md:mb-8">
-        <PerformanceChart
-          spyReturns={SP500_RETURNS}
-          vtiReturns={[]}
-          nasdaqReturns={NASDAQ_RETURNS}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
-        <div className="bg-card text-card-foreground rounded-xl p-4 md:p-6 shadow-sm border border-border">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs md:text-sm text-muted-foreground">Total Portfolio Value</h3>
-            <TooltipProvider>
-              <UITooltip>
-                <TooltipTrigger>
-                  <HelpCircle className="w-4 h-4 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>The total value of all client portfolios combined</p>
-                </TooltipContent>
-              </UITooltip>
-            </TooltipProvider>
-          </div>
-          <div className="text-lg md:text-2xl font-bold">{formatCurrency(aggregateMetrics.totalValue)}</div>
-          <div className="flex items-center text-emerald-500 dark:text-emerald-400 text-xs md:text-sm">
-            <ArrowUpRight className="w-3 h-3 md:w-4 md:h-4" />
-            <span>{formatPercentage(8.5)}</span>
-          </div>
-        </div>
-        <div className="bg-card text-card-foreground rounded-xl p-4 md:p-6 shadow-sm border border-border">
-          <h3 className="text-xs md:text-sm text-muted-foreground">Total Investment</h3>
-          <div className="text-lg md:text-2xl font-bold">{formatCurrency(aggregateMetrics.totalInvestment)}</div>
-          <div className="flex items-center text-emerald-500 dark:text-emerald-400 text-xs md:text-sm">
-            <ArrowUpRight className="w-3 h-3 md:w-4 md:h-4" />
-            <span>{formatPercentage(12.3)}</span>
-          </div>
-        </div>
-        <div className="bg-card text-card-foreground rounded-xl p-4 md:p-6 shadow-sm border border-border">
-          <h3 className="text-xs md:text-sm text-muted-foreground">Total Profit</h3>
-          <div className="text-lg md:text-2xl font-bold">{formatCurrency(aggregateMetrics.totalProfit)}</div>
-          <div className="flex items-center text-emerald-500 dark:text-emerald-400 text-xs md:text-sm">
-            <ArrowUpRight className="w-3 h-3 md:w-4 md:h-4" />
-            <span>{formatPercentage(15.7)}</span>
-          </div>
-        </div>
-        <div className="bg-card text-card-foreground rounded-xl p-4 md:p-6 shadow-sm border border-border">
-          <h3 className="text-xs md:text-sm text-muted-foreground">Total Clients</h3>
-          <div className="text-lg md:text-2xl font-bold">{aggregateMetrics.totalClients}</div>
-          <div className="flex items-center text-emerald-500 dark:text-emerald-400 text-xs md:text-sm">
-            <ArrowUpRight className="w-3 h-3 md:w-4 md:h-4" />
-            <span>{formatPercentage(5.2)}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-card text-card-foreground rounded-xl p-3 md:p-4 mb-6 md:mb-8 border border-border">
-        <h3 className="text-xs md:text-sm font-medium mb-3 md:mb-4">Chart Controls</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <Label>Investment Percentage ({investmentPercentage}%)</Label>
-            <Slider
-              value={[investmentPercentage]}
-              onValueChange={handleInvestmentPercentageChange}
-              min={3}
-              max={20}
-              step={0.5}
-              className="mt-2"
+          <div className="mb-6 md:mb-8">
+            <PerformanceChart
+              spyReturns={SP500_RETURNS}
+              vtiReturns={[]}
+              nasdaqReturns={NASDAQ_RETURNS}
             />
           </div>
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <Switch
-                checked={visibleSeries.portfolioValue}
-                onCheckedChange={(checked) => 
-                  setVisibleSeries(prev => ({ ...prev, portfolioValue: checked }))
-                }
-              />
-              <Label>Show Portfolio Value</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                checked={visibleSeries.investment}
-                onCheckedChange={(checked) => 
-                  setVisibleSeries(prev => ({ ...prev, investment: checked }))
-                }
-              />
-              <Label>Show Monthly Investment</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                checked={visibleSeries.profit}
-                onCheckedChange={(checked) => 
-                  setVisibleSeries(prev => ({ ...prev, profit: checked }))
-                }
-              />
-              <Label>Show Cumulative Profit</Label>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
-        <div className="bg-card text-card-foreground rounded-xl p-3 md:p-6 shadow-sm border border-border col-span-1 lg:col-span-2">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xs md:text-base font-semibold">
-              {selectedClient ? `${selectedClient.name}'s Portfolio Performance` : 'Portfolio Performance'}
-            </h2>
-            {selectedClient && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedClient(null)}
-              >
-                View All Portfolios
-              </Button>
-            )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+            <div className="bg-card text-card-foreground rounded-xl p-4 md:p-6 shadow-sm border border-border">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs md:text-sm text-muted-foreground">Total Portfolio Value</h3>
+                <TooltipProvider>
+                  <UITooltip>
+                    <TooltipTrigger>
+                      <HelpCircle className="w-4 h-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>The total value of all client portfolios combined</p>
+                    </TooltipContent>
+                  </UITooltip>
+                </TooltipProvider>
+              </div>
+              <div className="text-lg md:text-2xl font-bold">{formatCurrency(aggregateMetrics.totalValue)}</div>
+              <div className="flex items-center text-emerald-500 dark:text-emerald-400 text-xs md:text-sm">
+                <ArrowUpRight className="w-3 h-3 md:w-4 md:h-4" />
+                <span>{formatPercentage(8.5)}</span>
+              </div>
+            </div>
+            <div className="bg-card text-card-foreground rounded-xl p-4 md:p-6 shadow-sm border border-border">
+              <h3 className="text-xs md:text-sm text-muted-foreground">Total Investment</h3>
+              <div className="text-lg md:text-2xl font-bold">{formatCurrency(aggregateMetrics.totalInvestment)}</div>
+              <div className="flex items-center text-emerald-500 dark:text-emerald-400 text-xs md:text-sm">
+                <ArrowUpRight className="w-3 h-3 md:w-4 md:h-4" />
+                <span>{formatPercentage(12.3)}</span>
+              </div>
+            </div>
+            <div className="bg-card text-card-foreground rounded-xl p-4 md:p-6 shadow-sm border border-border">
+              <h3 className="text-xs md:text-sm text-muted-foreground">Total Profit</h3>
+              <div className="text-lg md:text-2xl font-bold">{formatCurrency(aggregateMetrics.totalProfit)}</div>
+              <div className="flex items-center text-emerald-500 dark:text-emerald-400 text-xs md:text-sm">
+                <ArrowUpRight className="w-3 h-3 md:w-4 md:h-4" />
+                <span>{formatPercentage(15.7)}</span>
+              </div>
+            </div>
+            <div className="bg-card text-card-foreground rounded-xl p-4 md:p-6 shadow-sm border border-border">
+              <h3 className="text-xs md:text-sm text-muted-foreground">Total Clients</h3>
+              <div className="text-lg md:text-2xl font-bold">{aggregateMetrics.totalClients}</div>
+              <div className="flex items-center text-emerald-500 dark:text-emerald-400 text-xs md:text-sm">
+                <ArrowUpRight className="w-3 h-3 md:w-4 md:h-4" />
+                <span>{formatPercentage(5.2)}</span>
+              </div>
+            </div>
           </div>
-          <div className="h-[400px] md:h-[500px] w-full">
-            {clients.length > 0 && (
-              <ResponsiveLine
-                data={[
-                  ...formatChartData(selectedClient ? selectedClient.monthlyData : clients[0]?.monthlyData),
-                  ...(comparisonClient ? formatChartData(comparisonClient.monthlyData) : [])
-                ]}
-                margin={{ top: 30, right: 40, bottom: 70, left: 60 }}
-                xScale={{
-                  type: 'point'
-                }}
-                yScale={{
-                  type: 'linear',
-                  min: 'auto',
-                  max: 'auto',
-                  stacked: false,
-                  reverse: false
-                }}
-                curve="monotoneX"
-                axisTop={null}
-                axisRight={null}
-                axisBottom={{
-                  tickSize: 5,
-                  tickPadding: 5,
-                  tickRotation: -45,
-                  legend: 'Timeline',
-                  legendOffset: 50,
-                  legendPosition: 'middle',
-                  format: (value) => value?.toString() || ''
-                }}
-                axisLeft={{
-                  tickSize: 5,
-                  tickPadding: 5,
-                  tickRotation: 0,
-                  legend: 'Amount (ILS)',
-                  legendOffset: -45,
-                  legendPosition: 'middle',
-                  format: (value) => {
-                    if (value === null || value === undefined) return '';
-                    if (typeof value === 'number') {
-                      return new Intl.NumberFormat('he-IL', {
-                        style: 'currency',
-                        currency: 'ILS',
-                        notation: 'compact',
-                        maximumFractionDigits: 1
-                      }).format(value);
+
+          <div className="bg-card text-card-foreground rounded-xl p-3 md:p-4 mb-6 md:mb-8 border border-border">
+            <h3 className="text-xs md:text-sm font-medium mb-3 md:mb-4">Chart Controls</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label>Investment Percentage ({investmentPercentage}%)</Label>
+                <Slider
+                  value={[investmentPercentage]}
+                  onValueChange={handleInvestmentPercentageChange}
+                  min={3}
+                  max={20}
+                  step={0.5}
+                  className="mt-2"
+                />
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={visibleSeries.portfolioValue}
+                    onCheckedChange={(checked) => 
+                      setVisibleSeries(prev => ({ ...prev, portfolioValue: checked }))
                     }
-                    return value.toString();
-                  }
-                }}
-                enableGridX={false}
-                enableGridY={true}
-                lineWidth={3}
-                pointSize={isMobile ? 4 : 6}
-                pointColor={{ theme: 'background' }}
-                pointBorderWidth={2}
-                pointBorderColor={{ from: 'serieColor' }}
-                pointLabelYOffset={-12}
-                enableArea={true}
-                areaOpacity={0.15}
-                useMesh={true}
-                enableSlices="x"
-                crosshairType="cross"
-                motionConfig="gentle"
-                legends={[
-                  {
-                    anchor: 'bottom',
-                    direction: 'row',
-                    justify: false,
-                    translateX: 0,
-                    translateY: 60,
-                    itemsSpacing: 10,
-                    itemDirection: 'left-to-right',
-                    itemWidth: isMobile ? 80 : 120,
-                    itemHeight: 20,
-                    itemOpacity: 0.75,
-                    symbolSize: 12,
-                    symbolShape: 'circle',
-                    symbolBorderColor: 'rgba(0, 0, 0, .5)',
-                    effects: [
+                  />
+                  <Label>Show Portfolio Value</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={visibleSeries.investment}
+                    onCheckedChange={(checked) => 
+                      setVisibleSeries(prev => ({ ...prev, investment: checked }))
+                    }
+                  />
+                  <Label>Show Monthly Investment</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={visibleSeries.profit}
+                    onCheckedChange={(checked) => 
+                      setVisibleSeries(prev => ({ ...prev, profit: checked }))
+                    }
+                  />
+                  <Label>Show Cumulative Profit</Label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
+            <div className="bg-card text-card-foreground rounded-xl p-3 md:p-6 shadow-sm border border-border col-span-1 lg:col-span-2">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xs md:text-base font-semibold">
+                  {selectedClient ? `${selectedClient.name}'s Portfolio Performance` : 'Portfolio Performance'}
+                </h2>
+                {selectedClient && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedClient(null)}
+                  >
+                    View All Portfolios
+                  </Button>
+                )}
+              </div>
+              <div className="h-[400px] md:h-[500px] w-full">
+                {clients.length > 0 && (
+                  <ResponsiveLine
+                    data={[
+                      ...formatChartData(selectedClient ? selectedClient.monthlyData : clients[0]?.monthlyData),
+                      ...(comparisonClient ? formatChartData(comparisonClient.monthlyData) : [])
+                    ]}
+                    margin={{ top: 30, right: 40, bottom: 70, left: 60 }}
+                    xScale={{
+                      type: 'point'
+                    }}
+                    yScale={{
+                      type: 'linear',
+                      min: 'auto',
+                      max: 'auto',
+                      stacked: false,
+                      reverse: false
+                    }}
+                    curve="monotoneX"
+                    axisTop={null}
+                    axisRight={null}
+                    axisBottom={{
+                      tickSize: 5,
+                      tickPadding: 5,
+                      tickRotation: -45,
+                      legend: 'Timeline',
+                      legendOffset: 50,
+                      legendPosition: 'middle',
+                      format: (value) => value?.toString() || ''
+                    }}
+                    axisLeft={{
+                      tickSize: 5,
+                      tickPadding: 5,
+                      tickRotation: 0,
+                      legend: 'Amount (ILS)',
+                      legendOffset: -45,
+                      legendPosition: 'middle',
+                      format: (value) => {
+                        if (value === null || value === undefined) return '';
+                        if (typeof value === 'number') {
+                          return new Intl.NumberFormat('he-IL', {
+                            style: 'currency',
+                            currency: 'ILS',
+                            notation: 'compact',
+                            maximumFractionDigits: 1
+                          }).format(value);
+                        }
+                        return value.toString();
+                      }
+                    }}
+                    enableGridX={false}
+                    enableGridY={true}
+                    lineWidth={3}
+                    pointSize={isMobile ? 4 : 6}
+                    pointColor={{ theme: 'background' }}
+                    pointBorderWidth={2}
+                    pointBorderColor={{ from: 'serieColor' }}
+                    pointLabelYOffset={-12}
+                    enableArea={true}
+                    areaOpacity={0.15}
+                    useMesh={true}
+                    enableSlices="x"
+                    crosshairType="cross"
+                    motionConfig="gentle"
+                    legends={[
                       {
-                        on: 'hover',
-                        style: {
-                          itemBackground: 'rgba(0, 0, 0, .03)',
-                          itemOpacity: 1
+                        anchor: 'bottom',
+                        direction: 'row',
+                        justify: false,
+                        translateX: 0,
+                        translateY: 60,
+                        itemsSpacing: 10,
+                        itemDirection: 'left-to-right',
+                        itemWidth: isMobile ? 80 : 120,
+                        itemHeight: 20,
+                        itemOpacity: 0.75,
+                        symbolSize: 12,
+                        symbolShape: 'circle',
+                        symbolBorderColor: 'rgba(0, 0, 0, .5)',
+                        effects: [
+                          {
+                            on: 'hover',
+                            style: {
+                              itemBackground: 'rgba(0, 0, 0, .03)',
+                              itemOpacity: 1
+                            }
+                          }
+                        ]
+                      }
+                    ]}
+                    theme={{
+                      axis: {
+                        ticks: {
+                          text: {
+                            fontSize: isMobile ? 8 : 11,
+                            fill: 'hsl(var(--muted-foreground))'
+                          }
+                        },
+                        legend: {
+                          text: {
+                            fontSize: isMobile ? 9 : 12,
+                            fill: 'hsl(var(--muted-foreground))',
+                            fontWeight: 500
+                          }
+                        }
+                      },
+                      grid: {
+                        line: {
+                          stroke: 'hsl(var(--border))',
+                          strokeWidth: 1,
+                          strokeDasharray: '4 4'
+                        }
+                      },
+                      crosshair: {
+                        line: {
+                          stroke: 'hsl(var(--muted-foreground))',
+                          strokeWidth: 1,
+                          strokeOpacity: 0.35
+                        }
+                      },
+                      tooltip: {
+                        container: {
+                          background: 'hsl(var(--background))',
+                          color: 'hsl(var(--foreground))',
+                          fontSize: isMobile ? 10 : 12,
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                          padding: '6px 10px',
+                          border: '1px solid hsl(var(--border))'
                         }
                       }
-                    ]
-                  }
-                ]}
-                theme={{
-                  axis: {
-                    ticks: {
-                      text: {
-                        fontSize: isMobile ? 8 : 11,
-                        fill: 'hsl(var(--muted-foreground))'
-                      }
-                    },
-                    legend: {
-                      text: {
-                        fontSize: isMobile ? 9 : 12,
-                        fill: 'hsl(var(--muted-foreground))',
-                        fontWeight: 500
-                      }
-                    }
-                  },
-                  grid: {
-                    line: {
-                      stroke: 'hsl(var(--border))',
-                      strokeWidth: 1,
-                      strokeDasharray: '4 4'
-                    }
-                  },
-                  crosshair: {
-                    line: {
-                      stroke: 'hsl(var(--muted-foreground))',
-                      strokeWidth: 1,
-                      strokeOpacity: 0.35
-                    }
-                  },
-                  tooltip: {
-                    container: {
-                      background: 'hsl(var(--background))',
-                      color: 'hsl(var(--foreground))',
-                      fontSize: isMobile ? 10 : 12,
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                      padding: '6px 10px',
-                      border: '1px solid hsl(var(--border))'
-                    }
-                  }
-                }}
-              />
-            )}
-          </div>
-        </div>
-
-        <div className="bg-card text-card-foreground rounded-xl p-3 md:p-6 shadow-sm border border-border col-span-1 lg:col-span-2">
-          <h2 className="text-sm md:text-base font-semibold mb-3 md:mb-4">Client Distribution</h2>
-          <div className="h-[300px] md:h-[400px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={PROFESSIONS.map(profession => ({
-                    name: profession,
-                    value: clients.filter(client => client.profession === profession).length
-                  }))}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={isMobile ? 60 : 80}
-                  outerRadius={isMobile ? 90 : 120}
-                  fill="#8884d8"
-                  paddingAngle={2}
-                  dataKey="value"
-                  label={({name, percent}) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                  labelLine={{ stroke: '#374151', strokeWidth: 1 }}
-                  style={{ fontSize: isMobile ? '10px' : '12px' }}
-                >
-                  {PROFESSIONS.map((_, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={COLORS[index % COLORS.length]}
-                      stroke="#fff"
-                      strokeWidth={2}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-6 md:mt-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-          <h2 className="text-sm md:text-lg font-semibold">Client Overview</h2>
-          <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
-            <div className="relative flex-grow md:flex-grow-0">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search clients..."
-                className="w-full md:w-[200px] pl-10 pr-4 py-2 rounded-lg border border-input bg-background"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+                    }}
+                  />
+                )}
+              </div>
             </div>
-            <Button
-              onClick={() => setShowAllClients(!showAllClients)}
-              className="w-full md:w-auto"
-              variant="outline"
-            >
-              {showAllClients ? 'Show Less' : 'Show All Clients'}
-            </Button>
+
+            <div className="bg-card text-card-foreground rounded-xl p-3 md:p-6 shadow-sm border border-border col-span-1 lg:col-span-2">
+              <h2 className="text-sm md:text-base font-semibold mb-3 md:mb-4">Client Distribution</h2>
+              <div className="h-[300px] md:h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={PROFESSIONS.map(profession => ({
+                        name: profession,
+                        value: clients.filter(client => client.profession === profession).length
+                      }))}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={isMobile ? 60 : 80}
+                      outerRadius={isMobile ? 90 : 120}
+                      fill="#8884d8"
+                      paddingAngle={2}
+                      dataKey="value"
+                      label={({name, percent}) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                      labelLine={{ stroke: '#374151', strokeWidth: 1 }}
+                      style={{ fontSize: isMobile ? '10px' : '12px' }}
+                    >
+                      {PROFESSIONS.map((_, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={COLORS[index % COLORS.length]}
+                          stroke="#fff"
+                          strokeWidth={2}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-          {filteredClients.slice(0, showAllClients ? undefined : 6).map(client => {
-            const metrics = calculateMetrics(client);
-            const isSelected = selectedClient?.id === client.id;
-            const selectedTrack = INVESTMENT_TRACKS.find(track => track.id === client.investmentTrack);
 
-            return (
-              <div
-                key={client.id}
-                className={`bg-card text-card-foreground p-4 md:p-6 rounded-xl shadow-sm border border-border cursor-pointer hover:shadow-md transition-shadow ${
-                  isSelected ? 'ring-2 ring-blue-500' : ''
-                }`}
-                onClick={() => handleClientClick(client)}
-              >
-                <div className="flex justify-between items-start mb-4 md:mb-6">
-                  <div>
-                    <h3 className="font-semibold text-sm md:text-lg">{client.name}</h3>
-                    <p className="text-xs md:text-sm text-muted-foreground">{client.profession}</p>
-                  </div>
-                  <span className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm ${
-                    selectedTrack?.type === 'Mutual Fund' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                    selectedTrack?.type === 'ETF' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                    'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                  }`}>
-                    {selectedTrack?.name}
-                  </span>
+          <div className="mt-6 md:mt-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+              <h2 className="text-sm md:text-lg font-semibold">Client Overview</h2>
+              <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+                <div className="relative flex-grow md:flex-grow-0">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search clients..."
+                    className="w-full md:w-[200px] pl-10 pr-4 py-2 rounded-lg border border-input bg-background"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
                 </div>
+                <Button
+                  onClick={() => setShowAllClients(!showAllClients)}
+                  className="w-full md:w-auto"
+                  variant="outline"
+                >
+                  {showAllClients ? 'Show Less' : 'Show All Clients'}
+                </Button>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+              {filteredClients.slice(0, showAllClients ? undefined : 6).map(client => {
+                const metrics = calculateMetrics(client);
+                const isSelected = selectedClient?.id === client.id;
+                const selectedTrack = INVESTMENT_TRACKS.find(track => track.id === client.investmentTrack);
 
-                <div className="space-y-4">
-                  <div className="border-b border-border pb-4">
-                    <h4 className="font-medium mb-4">Investment Profile</h4>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Investment Track:</span>
-                        <span className="text-sm font-medium">{selectedTrack?.name}</span>
+                return (
+                  <div
+                    key={client.id}
+                    className={`bg-card text-card-foreground p-4 md:p-6 rounded-xl shadow-sm border border-border cursor-pointer hover:shadow-md transition-shadow ${
+                      isSelected ? 'ring-2 ring-blue-500' : ''
+                    }`}
+                    onClick={() => handleClientClick(client)}
+                  >
+                    <div className="flex justify-between items-start mb-4 md:mb-6">
+                      <div>
+                        <h3 className="font-semibold text-sm md:text-lg">{client.name}</h3>
+                        <p className="text-xs md:text-sm text-muted-foreground">{client.profession}</p>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Portfolio Value:</span>
-                        <span className="text-sm font-medium">{formatCurrency(metrics.portfolioValue)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Total Expenses:</span>
-                        <span className="text-sm font-medium">{formatCurrency(client.monthlyExpenses * 12)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Total Investment:</span>
-                        <span className="text-sm font-medium">{formatCurrency(metrics.totalInvestment)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Total Profit:</span>
-                        <span className={`text-sm font-medium ${
-                          metrics.totalProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                        }`}>
-                          {formatCurrency(metrics.totalProfit)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Latest Monthly Investment:</span>
-                        <span className="text-sm font-medium">{formatCurrency(metrics.latestMonthlyInvestment)}</span>
+                      <span className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm ${
+                        selectedTrack?.type === 'Mutual Fund' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                        selectedTrack?.type === 'ETF' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                        'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                      }`}>
+                        {selectedTrack?.name}
+                      </span>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="border-b border-border pb-4">
+                        <h4 className="font-medium mb-4">Investment Profile</h4>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Investment Track:</span>
+                            <span className="text-sm font-medium">{selectedTrack?.name}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Portfolio Value:</span>
+                            <span className="text-sm font-medium">{formatCurrency(metrics.portfolioValue)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Total Expenses:</span>
+                            <span className="text-sm font-medium">{formatCurrency(client.monthlyExpenses * 12)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Total Investment:</span>
+                            <span className="text-sm font-medium">{formatCurrency(metrics.totalInvestment)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Total Profit:</span>
+                            <span className={`text-sm font-medium ${
+                              metrics.totalProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                            }`}>
+                              {formatCurrency(metrics.totalProfit)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Latest Monthly Investment:</span>
+                            <span className="text-sm font-medium">{formatCurrency(metrics.latestMonthlyInvestment)}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Remove the modal since we're now showing client details in the main dashboard */}
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

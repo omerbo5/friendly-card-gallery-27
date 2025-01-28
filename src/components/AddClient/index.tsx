@@ -31,7 +31,7 @@ const AddClient = () => {
     investmentTrack: 'VTSAX' as InvestmentTrack
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
@@ -58,8 +58,8 @@ const AddClient = () => {
       })
     };
 
-    // Save to localStorage
-    addClient(newClient);
+    // Save to Supabase
+    await addClient(newClient);
     
     toast({
       title: "Success",
