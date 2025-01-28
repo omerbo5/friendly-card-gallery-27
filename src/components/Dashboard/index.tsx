@@ -6,7 +6,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from "@/components/ui/button";
 import { useNavigate } from 'react-router-dom';
-import { INVESTMENT_TRACKS } from '@/lib/constants';
+import { INVESTMENT_TRACKS, PROFESSIONS, SP500_RETURNS, NASDAQ_RETURNS, generateRandomName } from '@/lib/constants';
 import PerformanceChart from '@/components/PerformanceChart';
 import { ClientCard } from './ClientCard';
 import { MetricsPanel } from './MetricsPanel';
