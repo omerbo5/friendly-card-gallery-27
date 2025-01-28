@@ -5,6 +5,7 @@ import { Search, ArrowUpRight, ArrowDownRight, HelpCircle } from 'lucide-react';
 import { Client, MonthlyData, ClientMetrics, AggregateMetrics } from '@/types/investment';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { generateMonthlyData } from '@/lib/utils';
 import {
   Table,
   TableBody,
@@ -90,13 +91,18 @@ export const Dashboard = () => {
   useEffect(() => {
     const loadClients = async () => {
       setIsLoading(true);
-      const storedClients = await getClients();
-      if (storedClients.length === 0) {
-        await generateClients();
-      } else {
-        setClients(storedClients);
+      try {
+        const storedClients = await getClients();
+        if (storedClients.length === 0) {
+          await generateClients();
+        } else {
+          setClients(storedClients);
+        }
+      } catch (error) {
+        console.error('Error loading clients:', error);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     loadClients();
@@ -110,7 +116,7 @@ export const Dashboard = () => {
       const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
       
       return {
-        id: i + 1,
+        id: (i + 1).toString(), // Convert to string to match Supabase UUID
         name: generateRandomName(),
         profession: PROFESSIONS[Math.floor(Math.random() * PROFESSIONS.length)],
         investmentTrack: randomTrack,
@@ -148,7 +154,13 @@ export const Dashboard = () => {
     };
   }, { totalValue: 0, totalInvestment: 0, totalProfit: 0, totalClients: 0 });
 
-  const filteredClients = searchTerm ? searchClients(searchTerm) : clients;
+  const filteredClients = async () => {
+    if (searchTerm) {
+      const results = await searchClients(searchTerm);
+      return results;
+    }
+    return clients;
+  };
 
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat('he-IL', {
@@ -585,7 +597,7 @@ export const Dashboard = () => {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-              {filteredClients.slice(0, showAllClients ? undefined : 6).map(client => {
+              {filteredClients().then(clientsToShow => clientsToShow.slice(0, showAllClients ? undefined : 6)).map(client => {
                 const metrics = calculateMetrics(client);
                 const isSelected = selectedClient?.id === client.id;
                 const selectedTrack = INVESTMENT_TRACKS.find(track => track.id === client.investmentTrack);

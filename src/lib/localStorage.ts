@@ -4,15 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const saveClients = async (clients: Client[]) => {
   try {
-    // Delete existing clients
     const { error: deleteError } = await supabase
       .from('clients')
       .delete()
-      .neq('id', 0); // Delete all records
+      .neq('id', '0'); // Use string for comparison
     
     if (deleteError) throw deleteError;
 
-    // Insert new clients
     for (const client of clients) {
       const { data: clientData, error: clientError } = await supabase
         .from('clients')
@@ -29,7 +27,6 @@ export const saveClients = async (clients: Client[]) => {
 
       if (clientError) throw clientError;
 
-      // Insert monthly data for this client
       const monthlyDataInserts = client.monthlyData.map(data => ({
         client_id: clientData.id,
         month: data.month,
@@ -46,7 +43,6 @@ export const saveClients = async (clients: Client[]) => {
       if (monthlyError) throw monthlyError;
     }
 
-    // Notify other tabs about the change
     window.dispatchEvent(new Event('storage'));
   } catch (error) {
     console.error('Error saving clients:', error);

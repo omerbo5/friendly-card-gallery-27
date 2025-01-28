@@ -9,7 +9,7 @@ export interface MonthlyData {
 export type InvestmentTrack = 'SPY500' | 'NASDAQ100' | 'RUSSELL2000' | 'VTSAX' | 'VTI' | 'SWTSX' | 'IWV' | 'WFIVX';
 
 export interface Client {
-  id: number;
+  id: string;  // Changed from number to string to match Supabase UUID
   name: string;
   profession: string;
   customProfession?: string;
