@@ -9,7 +9,7 @@ export interface MonthlyData {
 export type InvestmentTrack = 'SPY500' | 'NASDAQ100' | 'RUSSELL2000' | 'VTSAX' | 'VTI' | 'SWTSX' | 'IWV' | 'WFIVX';
 
 export interface Client {
-  id: string;  // Changed from number to string to match Supabase UUID
+  id: string;
   name: string;
   profession: string;
   customProfession?: string;
@@ -30,6 +30,7 @@ export interface ClientMetrics {
   totalProfit: number;
   latestMonthlyInvestment: number;
   managementFee: number;
+  currentValue: number;
 }
 
 export interface AggregateMetrics {
@@ -47,4 +48,10 @@ export interface ChartDataPoint {
 export interface ChartSeries {
   id: string;
   data: ChartDataPoint[];
+}
+
+export interface VisibleSeries {
+  portfolioValue: boolean;
+  investment: boolean;
+  profit: boolean;
 }

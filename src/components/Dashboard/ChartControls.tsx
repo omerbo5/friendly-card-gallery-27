@@ -2,16 +2,13 @@ import React from 'react';
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { VisibleSeries } from '@/types/investment';
 
 interface ChartControlsProps {
   investmentPercentage: number;
-  visibleSeries: {
-    portfolioValue: boolean;
-    investment: boolean;
-    profit: boolean;
-  };
+  visibleSeries: VisibleSeries;
   onInvestmentPercentageChange: (value: number[]) => void;
-  onVisibleSeriesChange: (key: keyof typeof visibleSeries, checked: boolean) => void;
+  onVisibleSeriesChange: (key: keyof VisibleSeries, checked: boolean) => void;
 }
 
 export const ChartControls = ({

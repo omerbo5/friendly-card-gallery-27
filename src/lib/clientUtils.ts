@@ -7,7 +7,8 @@ export const calculateMetrics = (client: Client): ClientMetrics => {
       portfolioValue: 0,
       totalProfit: 0,
       latestMonthlyInvestment: 0,
-      managementFee: 0
+      managementFee: 0,
+      currentValue: 0
     };
   }
 
@@ -17,7 +18,8 @@ export const calculateMetrics = (client: Client): ClientMetrics => {
     portfolioValue: lastMonth.portfolioValue,
     totalProfit: lastMonth.profit,
     latestMonthlyInvestment: lastMonth.investment,
-    managementFee: client.monthlyData.reduce((sum, data) => sum + data.investment, 0) * 0.005
+    managementFee: client.monthlyData.reduce((sum, data) => sum + data.investment, 0) * 0.005,
+    currentValue: lastMonth.portfolioValue
   };
 };
 

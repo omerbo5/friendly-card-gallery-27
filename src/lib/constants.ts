@@ -16,87 +16,30 @@ export const PROFESSIONS = [
   'Other'
 ] as const;
 
-export const INVESTMENT_TRACKS = [
-  {
-    id: 'SPY500',
-    name: 'S&P 500 Index Fund',
-    description: 'Tracks the performance of 500 large companies listed on U.S. stock exchanges',
-    benchmark: 'S&P 500 Index',
-    type: 'ETF',
-    expenseRatio: 'Very Low',
-    topHoldings: 'Apple, Microsoft, Amazon, NVIDIA, Alphabet',
-    sectors: 'Technology, Healthcare, Financial Services, Consumer Discretionary'
-  },
-  {
-    id: 'NASDAQ100',
-    name: 'NASDAQ 100 Index Fund',
-    description: 'Tracks 100 of the largest non-financial companies listed on the NASDAQ',
-    benchmark: 'NASDAQ 100 Index',
-    type: 'ETF',
-    expenseRatio: 'Very Low',
-    topHoldings: 'Apple, Microsoft, Amazon, NVIDIA, Meta',
-    sectors: 'Technology, Consumer Services, Healthcare'
-  },
-  {
-    id: 'RUSSELL2000',
-    name: 'Russell 2000 Small Cap Index',
-    description: 'Tracks 2000 small-cap company stocks',
-    benchmark: 'Russell 2000 Index',
-    type: 'ETF',
-    expenseRatio: 'Low',
-    topHoldings: 'Diverse small-cap companies',
-    sectors: 'Financial Services, Healthcare, Technology, Real Estate'
-  },
-  {
-    id: 'VTSAX',
-    name: 'Vanguard Total Stock Market Index',
-    description: 'Comprehensive U.S. stock market exposure',
-    benchmark: 'CRSP US Total Market Index',
-    type: 'Mutual Fund',
-    expenseRatio: 'Very Low',
-    topHoldings: 'Apple, Microsoft, Amazon, NVIDIA, Alphabet',
-    sectors: 'All U.S. market sectors'
-  },
-  {
-    id: 'VTI',
-    name: 'Vanguard Total Stock Market ETF',
-    description: 'ETF version of VTSAX',
-    benchmark: 'CRSP US Total Market Index',
-    type: 'ETF',
-    expenseRatio: 'Very Low',
-    topHoldings: 'Apple, Microsoft, Amazon, NVIDIA, Alphabet',
-    sectors: 'All U.S. market sectors'
-  },
-  {
-    id: 'SWTSX',
-    name: 'Schwab Total Stock Market Index',
-    description: 'Broad U.S. market exposure at a low cost',
-    benchmark: 'Dow Jones U.S. Total Stock Market Index',
-    type: 'Mutual Fund',
-    expenseRatio: 'Very Low',
-    topHoldings: 'Apple, Microsoft, Amazon, NVIDIA, Alphabet',
-    sectors: 'All U.S. market sectors'
-  },
-  {
-    id: 'IWV',
-    name: 'iShares Russell 3000 ETF',
-    description: 'Tracks 3000 largest U.S. stocks',
-    benchmark: 'Russell 3000 Index',
-    type: 'ETF',
-    expenseRatio: 'Low',
-    topHoldings: 'Apple, Microsoft, Amazon, NVIDIA, Alphabet',
-    sectors: 'All U.S. market sectors'
-  },
-  {
-    id: 'WFIVX',
-    name: 'Wilshire 5000 Index Fund',
-    description: 'Tracks the entire U.S. stock market',
-    benchmark: 'Wilshire 5000 Total Market Index',
-    type: 'Mutual Fund',
-    expenseRatio: 'Low',
-    topHoldings: 'Comprehensive U.S. market holdings',
-    sectors: 'All U.S. market sectors'
-  }
-] as const;
+// Historical returns data
+export const SP500_RETURNS = [
+  0.0348, -0.0250, 0.0573, -0.0099, 0.0202, 0.0228, 0.0113, 0.0347, 0.0480, -0.0416,
+  0.0310, 0.0517, 0.0159, 0.0442, 0.0892, -0.0220, -0.0487, -0.0177, 0.0311, 0.0647
+];
 
-export type InvestmentTrack = typeof INVESTMENT_TRACKS[number]['id'];
+export const NASDAQ_RETURNS = [
+  0.0362, 0.0048, 0.0621, -0.0052, 0.0268, 0.0065, -0.0075, 0.0596, 0.0688, -0.0441,
+  0.0179, 0.0612, 0.0102, 0.0552, 0.1070, -0.0278, -0.0581, -0.0217, 0.0405, 0.0659
+];
+
+// Name generation utilities
+const FIRST_NAMES = [
+  'Emma', 'Liam', 'Olivia', 'Noah', 'Ava', 'Ethan', 'Sophia', 'Mason',
+  'Isabella', 'William', 'Mia', 'James', 'Charlotte', 'Benjamin', 'Amelia'
+];
+
+const LAST_NAMES = [
+  'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller',
+  'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez'
+];
+
+export const generateRandomName = () => {
+  const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
+  const lastName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+  return `${firstName} ${lastName}`;
+};
