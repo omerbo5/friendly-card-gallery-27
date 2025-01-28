@@ -16,6 +16,13 @@ export const PROFESSIONS = [
   'Other'
 ] as const;
 
+// Investment track definitions
+export const INVESTMENT_TRACKS = [
+  { id: 'SPY500', name: 'S&P 500 Index Fund', type: 'ETF' },
+  { id: 'VTI', name: 'Vanguard Total Stock Market ETF', type: 'ETF' },
+  { id: 'NASDAQ100', name: 'NASDAQ 100 Index', type: 'ETF' }
+] as const;
+
 // Historical returns data
 export const SP500_RETURNS = [
   0.0348, -0.0250, 0.0573, -0.0099, 0.0202, 0.0228, 0.0113, 0.0347, 0.0480, -0.0416,
