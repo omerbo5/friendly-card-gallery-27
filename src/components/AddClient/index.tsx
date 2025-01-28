@@ -45,7 +45,7 @@ const AddClient = () => {
     }
 
     const newClient: Client = {
-      id: Date.now(),
+      id: Date.now().toString(), // Convert to string
       name: formData.name,
       profession: formData.profession === 'Other' ? 'Other' : formData.profession,
       customProfession: formData.profession === 'Other' ? formData.customProfession : undefined,

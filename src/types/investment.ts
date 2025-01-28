@@ -19,6 +19,11 @@ export interface Client {
   investmentPercentage: string;
 }
 
+export interface Metrics {
+  latestMonthlyInvestment: number;
+  currentValue: number;
+}
+
 export interface ClientMetrics {
   totalInvestment: number;
   portfolioValue: number;
@@ -32,4 +37,14 @@ export interface AggregateMetrics {
   totalInvestment: number;
   totalProfit: number;
   totalClients: number;
+}
+
+export interface ChartDataPoint {
+  x: string | number;
+  y: number;
+}
+
+export interface ChartSeries {
+  id: string;
+  data: ChartDataPoint[];
 }

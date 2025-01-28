@@ -1,4 +1,4 @@
-import { Client } from '@/types/investment';
+import { Client, InvestmentTrack } from '@/types/investment';
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -20,7 +20,7 @@ export const saveClients = async (clients: Client[]) => {
           custom_profession: client.customProfession,
           monthly_expenses: client.monthlyExpenses,
           investment_percentage: client.investmentPercentage,
-          investment_track: client.investmentTrack,
+          investment_track: client.investmentTrack as InvestmentTrack,
         })
         .select()
         .single();
@@ -84,7 +84,7 @@ export const getClients = async (): Promise<Client[]> => {
       customProfession: client.custom_profession || undefined,
       monthlyExpenses: client.monthly_expenses,
       investmentPercentage: client.investment_percentage,
-      investmentTrack: client.investment_track,
+      investmentTrack: client.investment_track as InvestmentTrack,
       monthlyData: client.monthly_data.map(data => ({
         month: data.month,
         expenses: data.expenses,
@@ -204,3 +204,4 @@ export const searchClients = async (searchTerm: string): Promise<Client[]> => {
     return [];
   }
 };
+

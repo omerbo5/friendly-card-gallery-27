@@ -1,3 +1,4 @@
+import { formatChartData } from '@/lib/chartUtils';
 import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { ResponsiveLine } from '@nivo/line';
@@ -652,3 +653,4 @@ export const Dashboard = () => {
 };
 
 export default Dashboard;
+
