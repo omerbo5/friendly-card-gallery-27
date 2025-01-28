@@ -16,11 +16,38 @@ export const PROFESSIONS = [
   'Other'
 ] as const;
 
-// Investment track definitions
+// Investment track definitions with complete information
 export const INVESTMENT_TRACKS = [
-  { id: 'SPY500', name: 'S&P 500 Index Fund', type: 'ETF' },
-  { id: 'VTI', name: 'Vanguard Total Stock Market ETF', type: 'ETF' },
-  { id: 'NASDAQ100', name: 'NASDAQ 100 Index', type: 'ETF' }
+  { 
+    id: 'SPY500', 
+    name: 'S&P 500 Index Fund', 
+    type: 'ETF',
+    description: 'Tracks the S&P 500 index of large-cap U.S. stocks',
+    benchmark: 'S&P 500 Index',
+    expenseRatio: '0.09%',
+    topHoldings: 'Apple, Microsoft, Amazon, NVIDIA, Alphabet',
+    sectors: 'Technology, Healthcare, Financials, Consumer Discretionary'
+  },
+  { 
+    id: 'VTI', 
+    name: 'Vanguard Total Stock Market ETF', 
+    type: 'ETF',
+    description: 'Provides broad exposure to the entire U.S. stock market',
+    benchmark: 'CRSP US Total Market Index',
+    expenseRatio: '0.03%',
+    topHoldings: 'Apple, Microsoft, Amazon, NVIDIA, Alphabet',
+    sectors: 'Technology, Healthcare, Financials, Consumer Discretionary, Industrials'
+  },
+  { 
+    id: 'NASDAQ100', 
+    name: 'NASDAQ 100 Index', 
+    type: 'ETF',
+    description: 'Tracks 100 of the largest non-financial companies listed on the Nasdaq',
+    benchmark: 'NASDAQ-100 Index',
+    expenseRatio: '0.20%',
+    topHoldings: 'Apple, Microsoft, Amazon, NVIDIA, Tesla',
+    sectors: 'Technology, Consumer Services, Healthcare, Consumer Goods'
+  }
 ] as const;
 
 // Historical returns data
