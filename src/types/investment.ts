@@ -19,15 +19,6 @@ export interface Client {
   investmentPercentage: string;
 }
 
-export interface Metrics {
-  totalInvestment: number;
-  portfolioValue: number;
-  totalProfit: number;
-  latestMonthlyInvestment: number;
-  managementFee: number;
-  currentValue: number;
-}
-
 export interface ClientMetrics {
   totalInvestment: number;
   portfolioValue: number;

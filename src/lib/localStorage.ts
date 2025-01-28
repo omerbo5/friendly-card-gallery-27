@@ -7,7 +7,7 @@ export const saveClients = async (clients: Client[]) => {
     const { error: deleteError } = await supabase
       .from('clients')
       .delete()
-      .neq('id', '0'); // Use string for comparison
+      .neq('id', '0');
     
     if (deleteError) throw deleteError;
 

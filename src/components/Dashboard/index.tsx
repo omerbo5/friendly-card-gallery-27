@@ -85,6 +85,7 @@ export const Dashboard = () => {
   });
   const [investmentPercentage, setInvestmentPercentage] = useState(10);
   const [isLoading, setIsLoading] = useState(true);
+  const [filteredClientsList, setFilteredClientsList] = useState<Client[]>([]);
   const isMobile = useIsMobile();
   const navigate = useNavigate();
 
@@ -108,6 +109,18 @@ export const Dashboard = () => {
     loadClients();
   }, []);
 
+  useEffect(() => {
+    const updateFilteredClients = async () => {
+      if (searchTerm) {
+        const results = await searchClients(searchTerm);
+        setFilteredClientsList(results);
+      } else {
+        setFilteredClientsList(clients);
+      }
+    };
+    updateFilteredClients();
+  }, [searchTerm, clients]);
+
   const generateClients = async () => {
     const newClients: Client[] = Array.from({ length: 100 }, (_, i) => {
       const monthlyExpenses = Math.floor(Math.random() * 16000) + 4000;
@@ -116,7 +129,7 @@ export const Dashboard = () => {
       const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
       
       return {
-        id: (i + 1).toString(), // Convert to string to match Supabase UUID
+        id: (i + 1).toString(),
         name: generateRandomName(),
         profession: PROFESSIONS[Math.floor(Math.random() * PROFESSIONS.length)],
         investmentTrack: randomTrack,
@@ -134,6 +147,16 @@ export const Dashboard = () => {
   };
 
   const calculateMetrics = (client: Client): ClientMetrics => {
+    if (!client.monthlyData || client.monthlyData.length === 0) {
+      return {
+        totalInvestment: 0,
+        portfolioValue: 0,
+        totalProfit: 0,
+        latestMonthlyInvestment: 0,
+        managementFee: 0
+      };
+    }
+
     const lastMonth = client.monthlyData[client.monthlyData.length - 1];
     return {
       totalInvestment: client.monthlyData.reduce((sum, data) => sum + data.investment, 0),
@@ -154,14 +177,6 @@ export const Dashboard = () => {
     };
   }, { totalValue: 0, totalInvestment: 0, totalProfit: 0, totalClients: 0 });
 
-  const filteredClients = async () => {
-    if (searchTerm) {
-      const results = await searchClients(searchTerm);
-      return results;
-    }
-    return clients;
-  };
-
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat('he-IL', {
       style: 'currency',
@@ -177,42 +192,6 @@ export const Dashboard = () => {
       minimumFractionDigits: 1,
       maximumFractionDigits: 1
     }).format(value / 100);
-  };
-
-  const formatChartData = (data: MonthlyData[] | undefined) => {
-    if (!data) return [];
-    
-    const series = [
-      {
-        id: "Portfolio Value",
-        color: "#8B5CF6",
-        data: data.map(d => ({
-          x: `Month ${d.month}`,
-          y: Number(d.portfolioValue.toFixed(2))
-        })),
-        visible: visibleSeries.portfolioValue
-      },
-      {
-        id: "Monthly Investment",
-        color: "#0EA5E9",
-        data: data.map(d => ({
-          x: `Month ${d.month}`,
-          y: Number(d.investment.toFixed(2))
-        })),
-        visible: visibleSeries.investment
-      },
-      {
-        id: "Cumulative Profit",
-        color: "#F97316",
-        data: data.map(d => ({
-          x: `Month ${d.month}`,
-          y: Number(d.profit.toFixed(2))
-        })),
-        visible: visibleSeries.profit
-      }
-    ];
-
-    return series.filter(s => s.visible);
   };
 
   const handleInvestmentPercentageChange = async (value: number[]) => {
@@ -597,71 +576,73 @@ export const Dashboard = () => {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-              {filteredClients().then(clientsToShow => clientsToShow.slice(0, showAllClients ? undefined : 6)).map(client => {
-                const metrics = calculateMetrics(client);
-                const isSelected = selectedClient?.id === client.id;
-                const selectedTrack = INVESTMENT_TRACKS.find(track => track.id === client.investmentTrack);
+              {filteredClientsList
+                .slice(0, showAllClients ? undefined : 6)
+                .map(client => {
+                  const metrics = calculateMetrics(client);
+                  const isSelected = selectedClient?.id === client.id;
+                  const selectedTrack = INVESTMENT_TRACKS.find(track => track.id === client.investmentTrack);
 
-                return (
-                  <div
-                    key={client.id}
-                    className={`bg-card text-card-foreground p-4 md:p-6 rounded-xl shadow-sm border border-border cursor-pointer hover:shadow-md transition-shadow ${
-                      isSelected ? 'ring-2 ring-blue-500' : ''
-                    }`}
-                    onClick={() => handleClientClick(client)}
-                  >
-                    <div className="flex justify-between items-start mb-4 md:mb-6">
-                      <div>
-                        <h3 className="font-semibold text-sm md:text-lg">{client.name}</h3>
-                        <p className="text-xs md:text-sm text-muted-foreground">{client.profession}</p>
+                  return (
+                    <div
+                      key={client.id}
+                      className={`bg-card text-card-foreground p-4 md:p-6 rounded-xl shadow-sm border border-border cursor-pointer hover:shadow-md transition-shadow ${
+                        isSelected ? 'ring-2 ring-blue-500' : ''
+                      }`}
+                      onClick={() => handleClientClick(client)}
+                    >
+                      <div className="flex justify-between items-start mb-4 md:mb-6">
+                        <div>
+                          <h3 className="font-semibold text-sm md:text-lg">{client.name}</h3>
+                          <p className="text-xs md:text-sm text-muted-foreground">{client.profession}</p>
+                        </div>
+                        <span className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm ${
+                          selectedTrack?.type === 'Mutual Fund' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                          selectedTrack?.type === 'ETF' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                          'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                        }`}>
+                          {selectedTrack?.name}
+                        </span>
                       </div>
-                      <span className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm ${
-                        selectedTrack?.type === 'Mutual Fund' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                        selectedTrack?.type === 'ETF' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                        'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                      }`}>
-                        {selectedTrack?.name}
-                      </span>
-                    </div>
 
-                    <div className="space-y-4">
-                      <div className="border-b border-border pb-4">
-                        <h4 className="font-medium mb-4">Investment Profile</h4>
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Investment Track:</span>
-                            <span className="text-sm font-medium">{selectedTrack?.name}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Portfolio Value:</span>
-                            <span className="text-sm font-medium">{formatCurrency(metrics.portfolioValue)}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Total Expenses:</span>
-                            <span className="text-sm font-medium">{formatCurrency(client.monthlyExpenses * 12)}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Total Investment:</span>
-                            <span className="text-sm font-medium">{formatCurrency(metrics.totalInvestment)}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Total Profit:</span>
-                            <span className={`text-sm font-medium ${
-                              metrics.totalProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                            }`}>
-                              {formatCurrency(metrics.totalProfit)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Latest Monthly Investment:</span>
-                            <span className="text-sm font-medium">{formatCurrency(metrics.latestMonthlyInvestment)}</span>
+                      <div className="space-y-4">
+                        <div className="border-b border-border pb-4">
+                          <h4 className="font-medium mb-4">Investment Profile</h4>
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-muted-foreground">Investment Track:</span>
+                              <span className="text-sm font-medium">{selectedTrack?.name}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-muted-foreground">Portfolio Value:</span>
+                              <span className="text-sm font-medium">{formatCurrency(metrics.portfolioValue)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-muted-foreground">Total Expenses:</span>
+                              <span className="text-sm font-medium">{formatCurrency(client.monthlyExpenses * 12)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-muted-foreground">Total Investment:</span>
+                              <span className="text-sm font-medium">{formatCurrency(metrics.totalInvestment)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-muted-foreground">Total Profit:</span>
+                              <span className={`text-sm font-medium ${
+                                metrics.totalProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                              }`}>
+                                {formatCurrency(metrics.totalProfit)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-muted-foreground">Latest Monthly Investment:</span>
+                              <span className="text-sm font-medium">{formatCurrency(metrics.latestMonthlyInvestment)}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           </div>
         </>
