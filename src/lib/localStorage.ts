@@ -20,7 +20,7 @@ export const saveClients = async (clients: Client[]) => {
           custom_profession: client.customProfession,
           monthly_expenses: client.monthlyExpenses,
           investment_percentage: client.investmentPercentage,
-          investment_track: client.investmentTrack as InvestmentTrack,
+          investment_track: client.investmentTrack,
         })
         .select()
         .single();
@@ -121,7 +121,6 @@ export const addClient = async (client: Client): Promise<Client[]> => {
 
     if (clientError) throw clientError;
 
-    // Insert monthly data
     const monthlyDataInserts = client.monthlyData.map(data => ({
       client_id: clientData.id,
       month: data.month,
@@ -185,7 +184,7 @@ export const searchClients = async (searchTerm: string): Promise<Client[]> => {
       customProfession: client.custom_profession || undefined,
       monthlyExpenses: client.monthly_expenses,
       investmentPercentage: client.investment_percentage,
-      investmentTrack: client.investment_track,
+      investmentTrack: client.investment_track as InvestmentTrack,
       monthlyData: client.monthly_data.map(data => ({
         month: data.month,
         expenses: data.expenses,
@@ -204,4 +203,3 @@ export const searchClients = async (searchTerm: string): Promise<Client[]> => {
     return [];
   }
 };
-
